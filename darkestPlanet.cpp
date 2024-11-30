@@ -1,8 +1,7 @@
-#include <GLFW/glfw3.h>
+#include "GraphicsManager.h"
 #include <iostream>
 using namespace std;
 
-#include "GraphicsManager.h"
 
 bool shouldQuit = false;
 
@@ -33,6 +32,9 @@ int main() {
 	// Setup window
 	// Setup input
 	GraphicsManager gManager = GraphicsManager(1024, 768, "Darkest Planet");	
+	if (!gManager.isInitialized()) {
+		return -1;
+	}
 	glfwSetKeyCallback(gManager.getWindow(), HandleKey);
 
 	GameLoop(gManager);
