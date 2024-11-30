@@ -2,9 +2,9 @@
 #include <iostream>
 using namespace std;
 
-#include "GUI.h"
+#include "GraphicsManager.h"
 
-GUI::GUI(int width, int height, const char* title) {
+GraphicsManager::GraphicsManager(int width, int height, const char* title) {
 	if (!glfwInit()) {
 		cerr << "Failed to initialize GLFW" << endl;
 		window = nullptr;
@@ -24,11 +24,11 @@ GUI::GUI(int width, int height, const char* title) {
     glfwMakeContextCurrent(window);
 }
 
-GLFWwindow* GUI::getWindow() const {
+GLFWwindow* GraphicsManager::getWindow() const {
 	return window;
 }
 
-void GUI::destroyWindow() {
+void GraphicsManager::destroyWindow() {
 	cout << "Destroying main window..." << endl;
 	if (window) { 
 		glfwDestroyWindow(window);
@@ -37,10 +37,10 @@ void GUI::destroyWindow() {
 	glfwTerminate();
 }
 
-bool GUI::shouldClose() {
+bool GraphicsManager::shouldClose() {
 	return glfwWindowShouldClose(window);
 }
 
-void GUI::update() {
+void GraphicsManager::update() {
 	glfwSwapBuffers(window);
 }

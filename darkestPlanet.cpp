@@ -1,30 +1,27 @@
 #include <GLFW/glfw3.h>
-#include <OpenGL/gl.h>
 #include <iostream>
 using namespace std;
 
-#include "GUI.h"
+#include "GraphicsManager.h"
 
-void GameLoop(GUI gui) {
+bool shouldQuit = false;
+
+void HandleKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		cout << "Wish to quit" << endl;
+		shouldQuit = true;
+	}
+}
+
+void GameLoop(GraphicsManager gManager) {
 	cout << "This will be the main game loop" << endl;
 
 	// Check Input
 	// Update entities
 	// Render Screen
 	// do these while game state is not quitting
-	while (!gui.shouldClose()) {
-		glClear(GL_COLOR_BUFFER_BIT);
-		glBegin(GL_TRIANGLES);
-			glColor3f(1.0f, 0.0f, 0.0f);
-			glVertex3f(-0.5f, -0.5f, 0.0f);
-			glColor3f(0.0f, 1.0f, 0.0f);
-			glVertex3f(0.0f, .5f, 0.0f);
-			glColor3f(0.0f, 0.0f, 1.0f);
-			glVertex3f(.5f, -0.5f, 0.0f);
-		glEnd();
-
-
-		gui.update();
+	while (!shouldQuit) {
+		gManager.update();
         glfwPollEvents();
 	}
 	
@@ -35,11 +32,12 @@ int main() {
 
 	// Setup window
 	// Setup input
-	GUI gui = GUI(640, 480, "Darkest Planet");	
+	GraphicsManager gManager = GraphicsManager(1024, 768, "Darkest Planet");	
+	glfwSetKeyCallback(gManager.getWindow(), HandleKey);
 
-	GameLoop(gui);
+	GameLoop(gManager);
 
-	gui.destroyWindow();
+	gManager.destroyWindow();
 
 	return 0;
 }

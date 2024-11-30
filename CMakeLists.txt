@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION  3.31)
 project("Darkest Planet") 
 
 # Specify C++ Standard
-#set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -22,12 +22,14 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX ".*/build/.*")
 add_executable("DarkestPlanet" ${SOURCES})
 
+find_package(Vulkan REQUIRED)
+
 # Link GLFW to your project
-target_link_libraries(DarkestPlanet PRIVATE glfw)
+target_link_libraries(DarkestPlanet PRIVATE glfw Vulkan::Vulkan)
 
 # For macOS, ensure linking with Cocoa, IOKit, and CoreVideo
 if(APPLE)
-	target_link_libraries(DarkestPlanet PRIVATE "-framework OpenGL" "-framework Cocoa" "-framework IOKit" "-framework CoreVideo")
+	target_link_libraries(DarkestPlanet PRIVATE "-framework Cocoa" "-framework IOKit" "-framework CoreVideo")
 endif()
 
 # For Linux, ensure linking with X11 and other necessary libraries
