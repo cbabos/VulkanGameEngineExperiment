@@ -2,7 +2,6 @@
 #include <iostream>
 using namespace std;
 
-
 bool shouldQuit = false;
 
 void HandleKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
