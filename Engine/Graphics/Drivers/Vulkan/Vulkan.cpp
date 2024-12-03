@@ -1,14 +1,18 @@
+#include "Vulkan.h"
+#include "GLFW/glfw3.h"
 #include <cstdint>
 #include <iostream>
 #include <set>
 #include <stdexcept>
 #include <limits>
 #include <algorithm>
-#include <vulkan/vulkan_core.h>
-using namespace std;
 
-#include "GraphicsManager.h"
-#include <vulkan/vulkan_beta.h>
+
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
 
 const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -17,102 +21,17 @@ const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
+VulkanDriver::VulkanDriver() {}
+VulkanDriver::~VulkanDriver() {}
+void VulkanDriver::RenderFrame() {}
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	} else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
+void VulkanDriver::Setup(GLFWwindow* engineWindow) {
+	window = engineWindow;
+	InitVulkan();
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData) {
-
-	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-	return VK_FALSE;
-}
-
-SwapChainSupportDetails GraphicsManager::QuerySwapChainSupport(VkPhysicalDevice device) {
-	SwapChainSupportDetails details;
-
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-	if (formatCount != 0) {
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-	}
-
-	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
-	if (presentModeCount != 0) {
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-	}
-
-	return details;
-}
-
-void GraphicsManager::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-	createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	createInfo.pfnUserCallback = debugCallback;
-}
-
-void GraphicsManager::SetupDebugMessenger() {
-	if (!enableValidationLayers) return;
-
-	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-	PopulateDebugMessengerCreateInfo(createInfo);
-
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-		throw std::runtime_error("failed to set up debug messenger!");
-	}
-}
-
-std::vector<const char*> getRequiredExtensions() {
-	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
-
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-	vector<const char*> requiredExtensions;
-
-	for (uint32_t i = 0; i < glfwExtensionCount; i++) {
-		requiredExtensions.emplace_back(glfwExtensions[i]);
-	}
-
-	requiredExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-	//requiredExtensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-	//requiredExtensions.emplace_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-
-	if (enableValidationLayers) {
-		requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	}
-
-	return requiredExtensions;
-}
-
-void GraphicsManager::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		func(instance, debugMessenger, pAllocator);
-	}
+void VulkanDriver::Destruct() {
+	DestroyVulkan();
 }
 
 bool checkValidationLayerSupport() {
@@ -140,50 +59,110 @@ bool checkValidationLayerSupport() {
 	return true;
 }
 
-bool GraphicsManager::isInitialized() {
-	return isManagerUp;
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+	auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+	if (func != nullptr) {
+		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+	} else {
+		return VK_ERROR_EXTENSION_NOT_PRESENT;
+	}
 }
 
-GraphicsManager::GraphicsManager(int width, int height, const char* title) {
-	if (!glfwInit()) {
-		cerr << "Failed to initialize GLFW" << endl;
-		window = nullptr;
-		return;
-	}
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData) {
 
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL please 
+	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
-	cout << "Creating new window [" << width << "x" << height << "] | " 
-		<< title << endl;
-
-	window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-	if (!window) {
-		cerr << "Failed to create window" << endl;
-		glfwTerminate();
-		return;
-	}
-
-	try {
-		InitVulkan();
-	} catch (const exception& e) {
-		cerr << e.what() << endl;
-		return;
-	}
-
-	glfwMakeContextCurrent(window);
-	isManagerUp = GLFW_TRUE;
+	return VK_FALSE;
 }
 
-void GraphicsManager::InitVulkan() {
+std::vector<const char*> getRequiredExtensions() {
+	uint32_t glfwExtensionCount = 0;
+	const char** glfwExtensions;
+
+	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+	std::vector<const char*> requiredExtensions;
+
+	for (uint32_t i = 0; i < glfwExtensionCount; i++) {
+		requiredExtensions.emplace_back(glfwExtensions[i]);
+	}
+
+	requiredExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+	//requiredExtensions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+	//requiredExtensions.emplace_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+
+	if (enableValidationLayers) {
+		requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	}
+
+	return requiredExtensions;
+}
+
+void VulkanDriver::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func != nullptr) {
+		func(instance, debugMessenger, pAllocator);
+	}
+}
+
+
+
+SwapChainSupportDetails VulkanDriver::QuerySwapChainSupport(VkPhysicalDevice device) {
+	SwapChainSupportDetails details;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+	if (formatCount != 0) {
+		details.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+	}
+
+	uint32_t presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+	if (presentModeCount != 0) {
+		details.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+	}
+
+	return details;
+}
+
+void VulkanDriver::PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+	createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	createInfo.pfnUserCallback = debugCallback;
+}
+
+void VulkanDriver::SetupDebugMessenger() {
+	if (!enableValidationLayers) return;
+
+	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+	PopulateDebugMessengerCreateInfo(createInfo);
+
+	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+		throw std::runtime_error("failed to set up debug messenger!");
+	}
+}
+
+void VulkanDriver::InitVulkan() {
 	CreateVulkanInstance();
 	SetupDebugMessenger();
 	CreateVulkanSurface();
 	PickPhysicalDevice();
 	CreateLogicalDevice();
-
+	CreateSwapChain();
 }
 
-void GraphicsManager::CreateVulkanInstance() {
+void VulkanDriver::CreateVulkanInstance() {
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
 		throw std::runtime_error("validation layers requested, but not available!");
 	}
@@ -222,25 +201,25 @@ void GraphicsManager::CreateVulkanInstance() {
 		char* error;
 		switch (vkResult) {
 			case VK_ERROR_OUT_OF_HOST_MEMORY:
-				throw runtime_error("Out of memory");
+				throw std::runtime_error("Out of memory");
 				break;
 			case VK_ERROR_OUT_OF_DEVICE_MEMORY: 
-				throw runtime_error("Out of device memory");
+				throw std::runtime_error("Out of device memory");
 				break;
 			case VK_ERROR_INITIALIZATION_FAILED: 
-				throw runtime_error("Initialization failed");
+				throw std::runtime_error("Initialization failed");
 				break;
 			case VK_ERROR_LAYER_NOT_PRESENT: 
-				throw runtime_error("Layer not present");
+				throw std::runtime_error("Layer not present");
 				break;
 			case VK_ERROR_EXTENSION_NOT_PRESENT: 
-				throw runtime_error("Extension not present");
+				throw std::runtime_error("Extension not present");
 				break;
 			case VK_ERROR_INCOMPATIBLE_DRIVER: 
-				throw runtime_error("Incompatible driver");
+				throw std::runtime_error("Incompatible driver");
 				break;
 			default: 
-				throw runtime_error("Unknown error");
+				throw std::runtime_error("Unknown error");
 				break;
 		}
 	}
@@ -248,50 +227,50 @@ void GraphicsManager::CreateVulkanInstance() {
 	uint32_t extensionCount = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
-	vector<VkExtensionProperties> extensions(extensionCount);
+	std::vector<VkExtensionProperties> extensions(extensionCount);
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
-	cout << "Available extensions:" << endl;
+	std::cout << "Available extensions:" << std::endl;
 	for (const auto& extension : extensions) {
-		cout << "\t" << extension.extensionName << endl;
+		std::cout << "\t" << extension.extensionName << std::endl;
 	}
 }
 
-void GraphicsManager::CreateVulkanSurface() {
+void VulkanDriver::CreateVulkanSurface() {
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-		throw runtime_error("Failed to create VkSurface");
+		throw std::runtime_error("Failed to create VkSurface");
 	}
 }
 
-void GraphicsManager::PickPhysicalDevice() {
+void VulkanDriver::PickPhysicalDevice() {
 	uint32_t deviceCount = 0;
 	VkResult result = vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
 	if (result != VK_SUCCESS){
 		switch (result) {
 			case VK_INCOMPLETE: 
-				throw runtime_error("PickPhysicalDevice::VK_INCOMPLETE");
+				throw std::runtime_error("PickPhysicalDevice::VK_INCOMPLETE");
 				break;
 			case VK_ERROR_OUT_OF_HOST_MEMORY: 
-				throw runtime_error("PickPhysicalDevice::VK_ERROR_OUT_OF_HOST_MEMORY");
+				throw std::runtime_error("PickPhysicalDevice::VK_ERROR_OUT_OF_HOST_MEMORY");
 				break;
 			case VK_ERROR_OUT_OF_DEVICE_MEMORY: 
-				throw runtime_error("PickPhysicalDevice::VK_ERROR_OUT_OF_DEVICE_MEMORY");
+				throw std::runtime_error("PickPhysicalDevice::VK_ERROR_OUT_OF_DEVICE_MEMORY");
 				break;
 			case VK_ERROR_INITIALIZATION_FAILED: 
-				throw runtime_error("PickPhysicalDevice::VK_ERROR_INITIALIZATION_FAILED");
+				throw std::runtime_error("PickPhysicalDevice::VK_ERROR_INITIALIZATION_FAILED");
 				break;
 			default: 
-				throw runtime_error("PickPhysicalDevice::Unknown");
+				throw std::runtime_error("PickPhysicalDevice::Unknown");
 				break;
 		}
 	}
 
 	if (deviceCount == 0) { 
-		throw runtime_error("No Vulkan-supported GPUs were found");
+		throw std::runtime_error("No Vulkan-supported GPUs were found");
 	}
 
-	vector<VkPhysicalDevice> devices(deviceCount);
+	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
 	for (const auto& device : devices) {
@@ -302,11 +281,11 @@ void GraphicsManager::PickPhysicalDevice() {
 	}
 
 	if (physicalDevice == VK_NULL_HANDLE) {
-		throw runtime_error("Failed to find suitable GPU");
+		throw std::runtime_error("Failed to find suitable GPU");
 	}
 }
 
-QueueFamilyIndices GraphicsManager::findQueueFamilies(VkPhysicalDevice device) {
+QueueFamilyIndices VulkanDriver::findQueueFamilies(VkPhysicalDevice device) {
 	QueueFamilyIndices indices;
 
 	uint32_t queueFamilyCount = 0;
@@ -337,14 +316,14 @@ QueueFamilyIndices GraphicsManager::findQueueFamilies(VkPhysicalDevice device) {
 	return indices;
 }
 
-bool GraphicsManager::CheckDeviceExtensionSupport(VkPhysicalDevice device) {
+bool VulkanDriver::CheckDeviceExtensionSupport(VkPhysicalDevice device) {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-	set<string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
 	for (const auto& extension : availableExtensions) {
 		requiredExtensions.erase(extension.extensionName);
@@ -353,7 +332,7 @@ bool GraphicsManager::CheckDeviceExtensionSupport(VkPhysicalDevice device) {
 	return requiredExtensions.empty();
 }
 
-bool GraphicsManager::isDeviceSuitable(VkPhysicalDevice device) {
+bool VulkanDriver::isDeviceSuitable(VkPhysicalDevice device) {
 	QueueFamilyIndices indices = findQueueFamilies(device);
 
 	bool extensionsSupported = CheckDeviceExtensionSupport(device);
@@ -366,7 +345,7 @@ bool GraphicsManager::isDeviceSuitable(VkPhysicalDevice device) {
 	return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-VkSurfaceFormatKHR GraphicsManager::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+VkSurfaceFormatKHR VulkanDriver::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 	for (const auto& availableFormat : availableFormats) {
 		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormat;
@@ -376,7 +355,7 @@ VkSurfaceFormatKHR GraphicsManager::ChooseSwapSurfaceFormat(const std::vector<Vk
 	return availableFormats[0];
 }
 
-VkPresentModeKHR GraphicsManager::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+VkPresentModeKHR VulkanDriver::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 	for (const auto& availablePresentMode : availablePresentModes) {
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
 			return availablePresentMode;
@@ -386,7 +365,7 @@ VkPresentModeKHR GraphicsManager::ChooseSwapPresentMode(const std::vector<VkPres
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D GraphicsManager::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+VkExtent2D VulkanDriver::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
 		return capabilities.currentExtent;
 	} else {
@@ -405,11 +384,11 @@ VkExtent2D GraphicsManager::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& cap
 	}
 }
 
-void GraphicsManager::CreateLogicalDevice() {
+void VulkanDriver::CreateLogicalDevice() {
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-	vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -447,7 +426,7 @@ void GraphicsManager::CreateLogicalDevice() {
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
-void GraphicsManager::CreateSwapChain() {
+void VulkanDriver::CreateSwapChain() {
 	SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(physicalDevice);
 
     VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -499,47 +478,24 @@ void GraphicsManager::CreateSwapChain() {
 	swapChainExtent = extent;
 }
 
-void GraphicsManager::CreateImageViews() {
+void VulkanDriver::CreateImageViews() {
 	// TODO: what's coming here?
 }
 
-void GraphicsManager::DestroyVulkan() {
+void VulkanDriver::DestroyVulkan() {
 	//	for (auto imageView : swapChainImageViews) {
 	//		vkDestroyImageView(device, imageView, nullptr);
 	//	}
 	//
+	std::cout << "Destroying Vulkan" << std::endl;
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
-
-	cout << "Destroy is happening" << endl;
 
 	if (enableValidationLayers) {
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 
 	vkDestroyInstance(instance, nullptr);
-
-	cout << "Destroying main window..." << endl;
-	if (window) { 
-		glfwDestroyWindow(window);
-		window = nullptr;
-	}
-	glfwTerminate();
-}
-
-GLFWwindow* GraphicsManager::getWindow() const {
-	return window;
-}
-
-void GraphicsManager::destroyWindow() {
-	DestroyVulkan();
-}
-
-bool GraphicsManager::shouldClose() {
-	return glfwWindowShouldClose(window);
-}
-
-void GraphicsManager::update() {
-	glfwSwapBuffers(window);
+	std::cout << "Vulkan Destroyed" << std::endl;
 }
