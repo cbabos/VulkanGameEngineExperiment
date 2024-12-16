@@ -25,8 +25,10 @@ If your setup is working correctly you should be able to build the project.
 
 The build should be done without errors, if something wrong happens it's probably due to your Vulkan or CMake setup ("probably", I'm still a noob on this field).
 Now we'll need to compile the two shaders. 
+
 4. Inside `build` directory create a `shaders` sub-dir. 
 5. While staying in `build`
+
 ```sh
 glslc ../shaders/triangle.vert -o shaders/vert.spv
 glslc ../shaders/triangle.frag -o shaders/frag.spv
