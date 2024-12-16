@@ -62,5 +62,6 @@ bool GraphicsManager::shouldClose() {
 
 void GraphicsManager::update() {
 	glfwSwapBuffers(window);
+	driver->RenderFrame();
 	glfwPollEvents();
 }

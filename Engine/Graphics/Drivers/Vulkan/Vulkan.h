@@ -50,6 +50,10 @@ class VulkanDriver : public IGraphicsDriver {
 		VkPipelineLayout pipelineLayout;
 		VkCommandPool commandPool;
 		VkCommandBuffer commandBuffer;
+
+		VkSemaphore imageAvailableSemaphore;
+		VkSemaphore renderFinishedSemaphore;
+		VkFence inFlightFence;
 		
 		std::vector<VkImageView> swapChainImageViews;
 		std::vector<VkImage> swapChainImages;
@@ -75,6 +79,7 @@ class VulkanDriver : public IGraphicsDriver {
 		void CreateFrameBuffers();
 		void CreateCommandPool();
 		void CreateCommandBuffer();
+		void CreateSyncObjects();
 		void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 		void DrawFrame(); 
 		SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device); 
