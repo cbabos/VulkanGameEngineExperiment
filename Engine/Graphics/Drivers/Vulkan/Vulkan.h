@@ -43,10 +43,18 @@ class VulkanDriver : public IGraphicsDriver {
 		VkDebugUtilsMessengerEXT debugMessenger;
 
 		VkSwapchainKHR swapChain;
-		std::vector<VkImage> swapChainImages;
 		VkFormat swapChainImageFormat;
 		VkExtent2D swapChainExtent;
+		VkPipeline graphicsPipeline;
+		VkRenderPass renderPass;
+		VkPipelineLayout pipelineLayout;
+		VkCommandPool commandPool;
+		VkCommandBuffer commandBuffer;
+		
 		std::vector<VkImageView> swapChainImageViews;
+		std::vector<VkImage> swapChainImages;
+		std::vector<VkFramebuffer> swapChainFramebuffers;
+
 
 		void InitVulkan();
 		void CreateVulkanInstance();
@@ -55,17 +63,25 @@ class VulkanDriver : public IGraphicsDriver {
 		void CreateLogicalDevice();
 		void CreateSwapChain();
 		void CreateImageViews();
+		void CreateGraphicsPipeline();
 		void DestroyVulkan();
 		void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 		void SetupDebugMessenger();
 		void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+		void CreateRenderPass(); 
 		QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 		bool isDeviceSuitable(VkPhysicalDevice device);
 		bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
+		void CreateFrameBuffers();
+		void CreateCommandPool();
+		void CreateCommandBuffer();
+		void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+		void DrawFrame(); 
 		SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device); 
 		VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 		VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 		VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+		VkShaderModule CreateShaderModule(const std::vector<char>& code);
 };
 
 #endif

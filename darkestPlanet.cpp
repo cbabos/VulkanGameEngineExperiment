@@ -1,5 +1,5 @@
 #include "Engine/Graphics/Drivers/Vulkan/Vulkan.h"
-#include "Engine/Graphics/Drivers/Dummy/Dummy.h"
+//#include "Engine/Graphics/Drivers/Dummy/Dummy.h"
 #include "Engine/Graphics/GraphicsManager.h"
 #include "GLFW/glfw3.h"
 #include <iostream>
@@ -29,12 +29,12 @@ void GameLoop(GraphicsManager* gManager) {
 
 int main() {
 	cout << "Darkest Planet v0.0" << endl << "===================" << endl; 
-	//VulkanDriver vulkanDriver{};
-	DummyDriver dummyDriver{};
+	VulkanDriver vulkanDriver{};
+	//DummyDriver dummyDriver{};
 
 	// Setup window
 	// Setup input
-	GraphicsManager gManager = GraphicsManager(1024, 768, "Darkest Planet", &dummyDriver);	
+	GraphicsManager gManager = GraphicsManager(1024, 768, "Darkest Planet", &vulkanDriver);	
 	if (!gManager.isInitialized()) {
 		return -1;
 	}
