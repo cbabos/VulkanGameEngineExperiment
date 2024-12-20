@@ -1,5 +1,4 @@
 #include "Vulkan.h"
-
 #include <set>
 
 void VulkanDriver::PickPhysicalDevice() {
@@ -57,6 +56,7 @@ bool VulkanDriver::CheckDeviceExtensionSupport(VkPhysicalDevice device) {
 
   std::set<std::string> requiredExtensions(deviceExtensions.begin(),
                                            deviceExtensions.end());
+  
 
   for (const auto &extension : availableExtensions) {
     requiredExtensions.erase(extension.extensionName);

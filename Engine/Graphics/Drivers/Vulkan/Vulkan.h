@@ -2,8 +2,8 @@
 #define VULKANDRIVER_H
 #define GLFW_INCLUDE_VULKAN
 #include "../IGraphicsDriver.h"
-
 #include <GLFW/glfw3.h>
+#include <iostream>
 #include <vector>
 
 #ifdef NDEBUG
@@ -15,7 +15,10 @@ const bool enableValidationLayers = true;
 const std::vector<const char *> validationLayers = {
   "VK_LAYER_KHRONOS_validation"};
 const std::vector<const char *> deviceExtensions = {
-  VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+  // @todo Need to figure out a way to check if needed
+  "VK_KHR_portability_subset"
+};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -29,6 +32,9 @@ struct SwapChainSupportDetails {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR>   presentModes;
 };
+
+bool checkValidationLayerSupport();
+std::vector<const char *> getRequiredExtensions();
 
 class VulkanDriver : public IGraphicsDriver {
   public:
