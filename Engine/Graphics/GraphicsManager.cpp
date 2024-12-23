@@ -16,9 +16,6 @@ GraphicsManager::GraphicsManager(int width, int height, const char* title, IGrap
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL please 
 
-	std::cout << "Creating new window [" << width << "x" << height << "] | " 
-		<< title << std::endl;
-
 	window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 	if (!window) {
 		std::cerr << "Failed to create window" << std::endl;
@@ -48,7 +45,6 @@ void GraphicsManager::destroyWindow() {
 	// should destroy driver here
 	driver->Destruct();
 	
-	std::cout << "Destroying main window..." << std::endl;
 	if (window) { 
 		glfwDestroyWindow(window);
 		window = nullptr;
