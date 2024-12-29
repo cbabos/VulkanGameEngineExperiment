@@ -1,4 +1,5 @@
 #include "Vulkan.h"
+#include <cstddef>
 
 VulkanDriver::VulkanDriver() {}
 
@@ -29,16 +30,18 @@ void VulkanDriver::InitVulkan() {
   CreateGraphicsPipeline();
   CreateFrameBuffers();
   CreateCommandPool();
-  CreateCommandBuffer();
+  CreateCommandBuffers();
   CreateSyncObjects();
 }
 
 void VulkanDriver::DestroyVulkan() {
   vkDeviceWaitIdle(device);
-
-  vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-  vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-  vkDestroyFence(device, inFlightFence, nullptr);
+  
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	  vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+	  vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+	  vkDestroyFence(device, inFlightFences[i], nullptr);
+  }
 
   vkDestroyCommandPool(device, commandPool, nullptr);
 

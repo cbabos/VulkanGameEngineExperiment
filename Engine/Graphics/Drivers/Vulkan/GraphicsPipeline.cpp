@@ -175,32 +175,32 @@ VkShaderModule VulkanDriver::CreateShaderModule(const std::vector<char> &code) {
 }
 
 void VulkanDriver::DrawFrame() {
-  vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
-  vkResetFences(device, 1, &inFlightFence);
+  vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+  vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
   uint32_t imageIndex;
-  vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore,
+  vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
                         VK_NULL_HANDLE, &imageIndex);
 
-  vkResetCommandBuffer(commandBuffer, 0);
-  RecordCommandBuffer(commandBuffer, imageIndex);
+  vkResetCommandBuffer(commandBuffers[currentFrame], 0);
+  RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-  VkSemaphore          waitSemaphores[] = {imageAvailableSemaphore};
+  VkSemaphore          waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
   VkPipelineStageFlags waitStages[]     = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount   = 1;
   submitInfo.pWaitSemaphores      = waitSemaphores;
   submitInfo.pWaitDstStageMask    = waitStages;
   submitInfo.commandBufferCount   = 1;
-  submitInfo.pCommandBuffers      = &commandBuffer;
-  VkSemaphore signalSemaphores[]  = {renderFinishedSemaphore};
+  submitInfo.pCommandBuffers      = &commandBuffers[currentFrame];
+  VkSemaphore signalSemaphores[]  = {renderFinishedSemaphores[currentFrame]};
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores    = signalSemaphores;
 
-  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) !=
+  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) !=
       VK_SUCCESS) {
     throw std::runtime_error("failed to submit draw command buffer!");
   }
@@ -216,4 +216,6 @@ void VulkanDriver::DrawFrame() {
   presentInfo.pImageIndices      = &imageIndex;
   presentInfo.pResults           = nullptr; // Optional
   vkQueuePresentKHR(presentQueue, &presentInfo);
+
+  currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

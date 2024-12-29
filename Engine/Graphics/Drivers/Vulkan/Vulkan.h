@@ -19,6 +19,8 @@ const std::vector<const char *> deviceExtensions = {
   "VK_KHR_portability_subset"
 };
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
@@ -62,15 +64,17 @@ class VulkanDriver : public IGraphicsDriver {
     VkRenderPass     renderPass;
     VkPipelineLayout pipelineLayout;
     VkCommandPool    commandPool;
-    VkCommandBuffer  commandBuffer;
+	std::vector<VkCommandBuffer>  commandBuffers;
 
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence     inFlightFence;
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence>     inFlightFences;
 
     std::vector<VkImageView>   swapChainImageViews;
     std::vector<VkImage>       swapChainImages;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+
+	uint32_t currentFrame = 0;
 
     void InitVulkan();
     void CreateVulkanInstance();
@@ -93,7 +97,7 @@ class VulkanDriver : public IGraphicsDriver {
     bool               CheckDeviceExtensionSupport(VkPhysicalDevice device);
     void               CreateFrameBuffers();
     void               CreateCommandPool();
-    void               CreateCommandBuffer();
+    void               CreateCommandBuffers();
     void               CreateSyncObjects();
     void               RecordCommandBuffer(VkCommandBuffer commandBuffer,
                                            uint32_t        imageIndex);
