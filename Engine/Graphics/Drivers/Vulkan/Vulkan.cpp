@@ -33,6 +33,7 @@ void VulkanDriver::InitVulkan() {
   CreateFrameBuffers();
   CreateCommandPool();
   CreateVertexBuffer();
+  CreateIndexBuffer();
   CreateCommandBuffers();
   CreateSyncObjects();
 }
@@ -55,6 +56,9 @@ void VulkanDriver::DestroyVulkan() {
   CleanupSwapChain();
   vkDestroyBuffer(device, vertexBuffer, nullptr);
   vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+  vkDestroyBuffer(device, indexBuffer, nullptr);
+  vkFreeMemory(device, indexBufferMemory, nullptr);
 
   vkDestroyPipeline(device, graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

@@ -70,6 +70,9 @@ class VulkanDriver : public IGraphicsDriver {
     VkBuffer         vertexBuffer;
     VkDeviceMemory   vertexBufferMemory;
 
+    VkBuffer       indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+
     std::vector<VkCommandBuffer> commandBuffers;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -95,6 +98,7 @@ class VulkanDriver : public IGraphicsDriver {
     void CreateImageViews();
     void CreateGraphicsPipeline();
     void CreateVertexBuffer();
+	void CreateIndexBuffer();
     void DestroyVulkan();
     void PopulateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT &createInfo);
