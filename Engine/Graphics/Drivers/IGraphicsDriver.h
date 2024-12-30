@@ -9,6 +9,7 @@ public:
 	virtual void Setup(GLFWwindow* window) = 0;
 	virtual void Destruct() = 0;
 	virtual void RenderFrame() = 0;
+	virtual void WindowIsResized() = 0; 
 };
 
 #endif

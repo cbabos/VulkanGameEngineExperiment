@@ -1,4 +1,5 @@
 #include "Vulkan.h"
+#include <iostream>
 
 SwapChainSupportDetails
   VulkanDriver::QuerySwapChainSupport(VkPhysicalDevice device) {
@@ -155,3 +156,29 @@ void VulkanDriver::CreateFrameBuffers() {
   }
 }
 
+void VulkanDriver::RecreateSwapChain() {
+  vkDeviceWaitIdle(device);
+  int width = 0, height = 0;
+  glfwGetFramebufferSize(window, &width, &height);
+  while (width == 0 || height == 0) {
+    glfwGetFramebufferSize(window, &width, &height);
+    glfwWaitEvents();
+  }
+
+  CleanupSwapChain();
+  CreateSwapChain();
+  CreateImageViews();
+  CreateFrameBuffers();
+}
+
+void VulkanDriver::CleanupSwapChain() {
+  for (auto framebuffer : swapChainFramebuffers) {
+    vkDestroyFramebuffer(device, framebuffer, nullptr);
+  }
+
+  for (auto imageView : swapChainImageViews) {
+    vkDestroyImageView(device, imageView, nullptr);
+  }
+
+  vkDestroySwapchainKHR(device, swapChain, nullptr);
+}

@@ -1,4 +1,5 @@
 #include "Vulkan.h"
+#include <vulkan/vulkan_core.h>
 
 void VulkanDriver::CreateCommandBuffers() {
   commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
@@ -41,6 +42,10 @@ void VulkanDriver::RecordCommandBuffer(VkCommandBuffer commandBuffer,
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     graphicsPipeline);
 
+  VkBuffer vertexBuffers[] = {vertexBuffer};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
   VkViewport viewport{};
   viewport.x        = 0.0f;
   viewport.y        = 0.0f;
@@ -55,7 +60,7 @@ void VulkanDriver::RecordCommandBuffer(VkCommandBuffer commandBuffer,
   scissor.extent = swapChainExtent;
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 

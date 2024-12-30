@@ -1,6 +1,8 @@
 #include "../../../../Utils/FileUtils.h"
 #include "Vulkan.h"
 
+#include <vulkan/vulkan_core.h>
+
 void VulkanDriver::CreateGraphicsPipeline() {
   auto vertShaderCode = readFile("shaders/vert.spv");
   auto fragShaderCode = readFile("shaders/frag.spv");
@@ -34,12 +36,17 @@ void VulkanDriver::CreateGraphicsPipeline() {
   dynamicState.pDynamicStates    = dynamicStates.data();
 
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+  auto bindingDescription    = Vertex::GetBindingDescription();
+  auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+
   vertexInputInfo.sType =
     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.vertexBindingDescriptionCount   = 0;
-  vertexInputInfo.pVertexBindingDescriptions      = nullptr; // Optional
-  vertexInputInfo.vertexAttributeDescriptionCount = 0;
-  vertexInputInfo.pVertexAttributeDescriptions    = nullptr; // Optional
+  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // Optional
+  vertexInputInfo.vertexAttributeDescriptionCount =
+    static_cast<uint32_t>(attributeDescriptions.size());
+  vertexInputInfo.pVertexAttributeDescriptions =
+    attributeDescriptions.data(); // Optional
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
   inputAssembly.sType =
@@ -175,21 +182,30 @@ VkShaderModule VulkanDriver::CreateShaderModule(const std::vector<char> &code) {
 }
 
 void VulkanDriver::DrawFrame() {
-  vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-  vkResetFences(device, 1, &inFlightFences[currentFrame]);
+  vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE,
+                  UINT64_MAX);
 
   uint32_t imageIndex;
-  vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
-                        VK_NULL_HANDLE, &imageIndex);
+  VkResult result = vkAcquireNextImageKHR(
+    device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
+    VK_NULL_HANDLE, &imageIndex);
 
+  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    RecreateSwapChain();
+    return;
+  } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    throw std::runtime_error("Failed to acquire swap chain image!");
+  }
+
+  vkResetFences(device, 1, &inFlightFences[currentFrame]);
   vkResetCommandBuffer(commandBuffers[currentFrame], 0);
   RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-  VkSemaphore          waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-  VkPipelineStageFlags waitStages[]     = {
+  VkSemaphore waitSemaphores[]      = {imageAvailableSemaphores[currentFrame]};
+  VkPipelineStageFlags waitStages[] = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submitInfo.waitSemaphoreCount   = 1;
   submitInfo.pWaitSemaphores      = waitSemaphores;
@@ -200,8 +216,8 @@ void VulkanDriver::DrawFrame() {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores    = signalSemaphores;
 
-  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) !=
-      VK_SUCCESS) {
+  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo,
+                    inFlightFences[currentFrame]) != VK_SUCCESS) {
     throw std::runtime_error("failed to submit draw command buffer!");
   }
 
@@ -215,7 +231,15 @@ void VulkanDriver::DrawFrame() {
   presentInfo.pSwapchains        = swapChains;
   presentInfo.pImageIndices      = &imageIndex;
   presentInfo.pResults           = nullptr; // Optional
-  vkQueuePresentKHR(presentQueue, &presentInfo);
+  result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+      framebufferResized) {
+    framebufferResized = false;
+    RecreateSwapChain();
+  } else if (result != VK_SUCCESS) {
+    throw std::runtime_error("Failed to present swapchain image!");
+  }
 
   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

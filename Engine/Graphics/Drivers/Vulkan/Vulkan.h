@@ -1,7 +1,10 @@
 #ifndef VULKANDRIVER_H
 #define VULKANDRIVER_H
+#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include "../IGraphicsDriver.h"
+#include "Vertex.h"
+
 #include <GLFW/glfw3.h>
 #include <vector>
 
@@ -16,8 +19,7 @@ const std::vector<const char *> validationLayers = {
 const std::vector<const char *> deviceExtensions = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   // @todo Need to figure out a way to check if needed
-  "VK_KHR_portability_subset"
-};
+  "VK_KHR_portability_subset"};
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -34,7 +36,7 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR>   presentModes;
 };
 
-bool checkValidationLayerSupport();
+bool                      checkValidationLayerSupport();
 std::vector<const char *> getRequiredExtensions();
 
 class VulkanDriver : public IGraphicsDriver {
@@ -45,6 +47,7 @@ class VulkanDriver : public IGraphicsDriver {
     void Setup(GLFWwindow *window) override;
     void Destruct() override;
     void RenderFrame() override;
+    void WindowIsResized() override;
 
   private:
     GLFWwindow *window;
@@ -64,17 +67,22 @@ class VulkanDriver : public IGraphicsDriver {
     VkRenderPass     renderPass;
     VkPipelineLayout pipelineLayout;
     VkCommandPool    commandPool;
-	std::vector<VkCommandBuffer>  commandBuffers;
+    VkBuffer         vertexBuffer;
+    VkDeviceMemory   vertexBufferMemory;
 
-	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
-	std::vector<VkFence>     inFlightFences;
+    std::vector<VkCommandBuffer> commandBuffers;
+
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence>     inFlightFences;
+
+    bool framebufferResized = false;
 
     std::vector<VkImageView>   swapChainImageViews;
     std::vector<VkImage>       swapChainImages;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
-	uint32_t currentFrame = 0;
+    uint32_t currentFrame = 0;
 
     void InitVulkan();
     void CreateVulkanInstance();
@@ -82,8 +90,11 @@ class VulkanDriver : public IGraphicsDriver {
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     void CreateSwapChain();
+    void RecreateSwapChain();
+    void CleanupSwapChain();
     void CreateImageViews();
     void CreateGraphicsPipeline();
+    void CreateVertexBuffer();
     void DestroyVulkan();
     void PopulateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -109,6 +120,12 @@ class VulkanDriver : public IGraphicsDriver {
       const std::vector<VkPresentModeKHR> &availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
     VkShaderModule CreateShaderModule(const std::vector<char> &code);
+    uint32_t       FindMemoryType(uint32_t              typeFilter,
+                                  VkMemoryPropertyFlags properties);
+    void           CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                                VkMemoryPropertyFlags properties, VkBuffer &buffer,
+                                VkDeviceMemory &bufferMemory);
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 };
 
 #endif

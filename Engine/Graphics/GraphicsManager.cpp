@@ -1,6 +1,5 @@
 #include <iostream>
 #include "GraphicsManager.h"
-#include "Drivers/IGraphicsDriver.h"
 #include "GLFW/glfw3.h"
 
 bool GraphicsManager::isInitialized() {
@@ -34,11 +33,18 @@ GraphicsManager::GraphicsManager(int width, int height, const char* title, IGrap
 	}
 
 	glfwMakeContextCurrent(window);
+	glfwSetWindowUserPointer(window, this);
+	glfwSetFramebufferSizeCallback(window, ResizeCallback);
 	isManagerUp = GLFW_TRUE;
 }
 
 GLFWwindow* GraphicsManager::getWindow() const {
 	return window;
+}
+
+void GraphicsManager::ResizeCallback(GLFWwindow* window, int newWidth, int newHeight) {
+	auto gManager = reinterpret_cast<GraphicsManager*>(glfwGetWindowUserPointer(window));
+	gManager->driver->WindowIsResized();
 }
 
 void GraphicsManager::destroyWindow() {
