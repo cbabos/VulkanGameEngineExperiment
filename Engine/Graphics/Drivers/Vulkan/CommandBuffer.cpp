@@ -1,4 +1,5 @@
 #include "Vulkan.h"
+#include <ios>
 #include <vulkan/vulkan_core.h>
 
 void VulkanDriver::CreateCommandBuffers() {
@@ -61,7 +62,7 @@ void VulkanDriver::RecordCommandBuffer(VkCommandBuffer commandBuffer,
   scissor.extent = swapChainExtent;
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  //vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
   vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);

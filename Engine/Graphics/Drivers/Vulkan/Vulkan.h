@@ -36,6 +36,12 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR>   presentModes;
 };
 
+struct UniformBufferObject { 
+	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 proj;
+};
+
 bool                      checkValidationLayerSupport();
 std::vector<const char *> getRequiredExtensions();
 
@@ -65,6 +71,7 @@ class VulkanDriver : public IGraphicsDriver {
     VkExtent2D       swapChainExtent;
     VkPipeline       graphicsPipeline;
     VkRenderPass     renderPass;
+	VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkCommandPool    commandPool;
     VkBuffer         vertexBuffer;
@@ -72,6 +79,12 @@ class VulkanDriver : public IGraphicsDriver {
 
     VkBuffer       indexBuffer;
     VkDeviceMemory indexBufferMemory;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
+
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<void*> uniformBuffersMapped;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -96,9 +109,13 @@ class VulkanDriver : public IGraphicsDriver {
     void RecreateSwapChain();
     void CleanupSwapChain();
     void CreateImageViews();
+	void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
     void CreateVertexBuffer();
+	void CreateUniformBuffers();
 	void CreateIndexBuffer();
+	void CreateDescriptorPool();
+	void CreateDescriptorSets();
     void DestroyVulkan();
     void PopulateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -130,6 +147,7 @@ class VulkanDriver : public IGraphicsDriver {
                                 VkMemoryPropertyFlags properties, VkBuffer &buffer,
                                 VkDeviceMemory &bufferMemory);
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void UpdateUniformBuffer(uint32_t currentImage);
 };
 
 #endif

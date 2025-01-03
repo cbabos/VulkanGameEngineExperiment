@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <iostream>
+#include <vulkan/vulkan_core.h>
 
 VulkanDriver::VulkanDriver() {}
 
@@ -29,11 +30,15 @@ void VulkanDriver::InitVulkan() {
   CreateSwapChain();
   CreateImageViews();
   CreateRenderPass();
+  CreateDescriptorSetLayout();
   CreateGraphicsPipeline();
   CreateFrameBuffers();
   CreateCommandPool();
   CreateVertexBuffer();
   CreateIndexBuffer();
+  CreateUniformBuffers();
+  CreateDescriptorPool();
+  CreateDescriptorSets();
   CreateCommandBuffers();
   CreateSyncObjects();
 }
@@ -49,11 +54,17 @@ void VulkanDriver::DestroyVulkan() {
     vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
     vkDestroyFence(device, inFlightFences[i], nullptr);
+
+	vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+	vkFreeMemory(device, uniformBuffersMemory[i], nullptr); 
   }
 
   vkDestroyCommandPool(device, commandPool, nullptr);
 
   CleanupSwapChain();
+  vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+  vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
   vkDestroyBuffer(device, vertexBuffer, nullptr);
   vkFreeMemory(device, vertexBufferMemory, nullptr);
 
