@@ -34,9 +34,9 @@ glslc ../shaders/triangle.vert -o shaders/vert.spv
 glslc ../shaders/triangle.frag -o shaders/frag.spv
 ```
 
-6. Make textures available 
+6. Make textures & models available 
 ```sh
-cp -R ../textures .
+cp -R ../{models,textures} .
 ```
 
 > **NOTE** 

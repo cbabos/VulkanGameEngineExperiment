@@ -30,6 +30,18 @@ FetchContent_MakeAvailable(stb)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+# Fetch tinyobjloader 
+FetchContent_Declare(
+   	tinyobj 
+    GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git 
+	GIT_TAG release 
+)
+FetchContent_MakeAvailable(tinyobj)
+
+# Create a library target for tinyobjloader 
+add_library(tinyobj INTERFACE)
+target_include_directories(tinyobj INTERFACE ${tinyobj_SOURCE_DIR})
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX ".*/build/.*")
 add_executable("DarkestPlanet" ${SOURCES})
@@ -37,7 +49,7 @@ add_executable("DarkestPlanet" ${SOURCES})
 find_package(Vulkan REQUIRED)
 
 # Link GLFW to your project
-target_link_libraries(DarkestPlanet PRIVATE glfw stb Vulkan::Vulkan)
+target_link_libraries(DarkestPlanet PRIVATE glfw stb tinyobj Vulkan::Vulkan)
 
 # For macOS, ensure linking with Cocoa, IOKit, and CoreVideo
 if(APPLE)

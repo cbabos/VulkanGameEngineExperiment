@@ -32,6 +32,9 @@ struct QueueFamilyIndices {
     bool isComplete();
 };
 
+const std::string MODEL_PATH = "models/viking_room.obj";
+const std::string TEXTURE_PATH = "textures/viking_room.png";
+
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR        capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
@@ -105,6 +108,8 @@ class VulkanDriver : public IGraphicsDriver {
     std::vector<VkImageView>   swapChainImageViews;
     std::vector<VkImage>       swapChainImages;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
 
     uint32_t currentFrame = 0;
 
@@ -112,6 +117,7 @@ class VulkanDriver : public IGraphicsDriver {
     VkDeviceMemory textureImageMemory;
 
     void InitVulkan();
+	void LoadModel();
     void CreateVulkanInstance();
     void CreateVulkanSurface();
     void PickPhysicalDevice();

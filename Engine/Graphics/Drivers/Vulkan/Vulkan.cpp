@@ -38,6 +38,7 @@ void VulkanDriver::InitVulkan() {
   CreateFrameBuffers();
   CreateTextureImageView();
   CreateTextureSampler();
+  LoadModel();
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();

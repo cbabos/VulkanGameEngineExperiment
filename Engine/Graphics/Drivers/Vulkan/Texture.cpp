@@ -1,7 +1,6 @@
 #include "Vulkan.h"
 
 #include <cstdint>
-#include <regex>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -9,7 +8,7 @@
 
 void VulkanDriver::CreateTextureImage() {
   int          texWidth, texHeight, texChannels;
-  stbi_uc     *pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight,
+  stbi_uc     *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight,
                                   &texChannels, STBI_rgb_alpha);
   VkDeviceSize imageSize = texWidth * texHeight * 4;
 
