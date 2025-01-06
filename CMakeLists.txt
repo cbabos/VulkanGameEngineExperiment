@@ -18,6 +18,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
+# Fetch stb 
+FetchContent_Declare(
+    stb 
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+	GIT_TAG master
+)
+FetchContent_MakeAvailable(stb)
+
+# Create a library target for stb
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX ".*/build/.*")
 add_executable("DarkestPlanet" ${SOURCES})
@@ -25,7 +37,7 @@ add_executable("DarkestPlanet" ${SOURCES})
 find_package(Vulkan REQUIRED)
 
 # Link GLFW to your project
-target_link_libraries(DarkestPlanet PRIVATE glfw Vulkan::Vulkan)
+target_link_libraries(DarkestPlanet PRIVATE glfw stb Vulkan::Vulkan)
 
 # For macOS, ensure linking with Cocoa, IOKit, and CoreVideo
 if(APPLE)

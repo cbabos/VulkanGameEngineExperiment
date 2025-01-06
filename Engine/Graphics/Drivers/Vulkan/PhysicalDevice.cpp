@@ -1,5 +1,7 @@
 #include "Vulkan.h"
+
 #include <set>
+#include <vulkan/vulkan_core.h>
 
 void VulkanDriver::PickPhysicalDevice() {
   uint32_t deviceCount = 0;
@@ -56,7 +58,7 @@ bool VulkanDriver::CheckDeviceExtensionSupport(VkPhysicalDevice device) {
 
   std::set<std::string> requiredExtensions(deviceExtensions.begin(),
                                            deviceExtensions.end());
-  
+
   for (const auto &extension : availableExtensions) {
     requiredExtensions.erase(extension.extensionName);
   }
@@ -75,5 +77,9 @@ bool VulkanDriver::isDeviceSuitable(VkPhysicalDevice device) {
                         !swapChainSupport.presentModes.empty();
   }
 
-  return indices.isComplete() && extensionsSupported && swapChainAdequate;
+  VkPhysicalDeviceFeatures supportedFeatures;
+  vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+  return indices.isComplete() && extensionsSupported && swapChainAdequate &&
+         supportedFeatures.samplerAnisotropy;
 }

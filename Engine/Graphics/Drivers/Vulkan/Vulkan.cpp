@@ -32,8 +32,12 @@ void VulkanDriver::InitVulkan() {
   CreateRenderPass();
   CreateDescriptorSetLayout();
   CreateGraphicsPipeline();
-  CreateFrameBuffers();
   CreateCommandPool();
+  CreateTextureImage();
+  CreateDepthResources();
+  CreateFrameBuffers();
+  CreateTextureImageView();
+  CreateTextureSampler();
   CreateVertexBuffer();
   CreateIndexBuffer();
   CreateUniformBuffers();
@@ -70,6 +74,11 @@ void VulkanDriver::DestroyVulkan() {
 
   vkDestroyBuffer(device, indexBuffer, nullptr);
   vkFreeMemory(device, indexBufferMemory, nullptr);
+
+  vkDestroySampler(device, textureSampler, nullptr);
+  vkDestroyImageView(device, textureImageView, nullptr);
+  vkDestroyImage(device, textureImage, nullptr);
+  vkFreeMemory(device, textureImageMemory, nullptr);
 
   vkDestroyPipeline(device, graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

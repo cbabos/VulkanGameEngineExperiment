@@ -18,7 +18,7 @@ Using C++ so you'll need to have a working compiler and C++ environment being se
 This project uses CMake, please install it before proceeding.  
 In order to use Vulkan you'll need to install the [SDK](https://vulkan.lunarg.com/sdk/home) first for your OS. 
 
-If your setup is working correctly you should be able to build the project. 
+If your setup is working correctly you should be able to build the project. (Be aware, the following commands are for MacOS but should be easy to adapt to your OS of choice) 
 1. create a directory called `build`
 2. go to `build` directory
 3. `cmake ../`
@@ -34,10 +34,15 @@ glslc ../shaders/triangle.vert -o shaders/vert.spv
 glslc ../shaders/triangle.frag -o shaders/frag.spv
 ```
 
+6. Make textures available 
+```sh
+cp -R ../textures .
+```
+
 > **NOTE** 
 > `glslc` should come with VulkanSDK. Check your setup of the SDK if it's unavailable.
 
-6. Run DarkestPlanet binary. 
+7. Run DarkestPlanet binary. 
 
 As of this moment the "engine" is in a state how the Vulkan tutorial helped me, meaning you have two shaders: a fragment shader and a vertex shader, you'll need to compile them and copy them over to the build folder.
 
