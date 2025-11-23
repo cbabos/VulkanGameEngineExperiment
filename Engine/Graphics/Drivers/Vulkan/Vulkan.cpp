@@ -33,14 +33,9 @@ void VulkanDriver::InitVulkan() {
   CreateDescriptorSetLayout();
   CreateGraphicsPipeline();
   CreateCommandPool();
-  CreateTextureImage();
   CreateDepthResources();
   CreateFrameBuffers();
-  CreateTextureImageView();
-  CreateTextureSampler();
-  LoadModel();
-  CreateVertexBuffer();
-  CreateIndexBuffer();
+  CreateDefaultTextureSampler();
   CreateUniformBuffers();
   CreateDescriptorPool();
   CreateDescriptorSets();
@@ -54,6 +49,18 @@ void VulkanDriver::WindowIsResized() {
 
 void VulkanDriver::DestroyVulkan() {
   vkDeviceWaitIdle(device);
+
+  // Clean up mesh resources
+  for (auto& [mesh, vulkanMesh] : meshResources) {
+    DestroyVulkanMesh(vulkanMesh);
+  }
+  meshResources.clear();
+
+  // Clean up texture resources
+  for (auto& [texture, vulkanTexture] : textureResources) {
+    DestroyVulkanTexture(vulkanTexture);
+  }
+  textureResources.clear();
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
@@ -70,16 +77,7 @@ void VulkanDriver::DestroyVulkan() {
   vkDestroyDescriptorPool(device, descriptorPool, nullptr);
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-  vkDestroyBuffer(device, vertexBuffer, nullptr);
-  vkFreeMemory(device, vertexBufferMemory, nullptr);
-
-  vkDestroyBuffer(device, indexBuffer, nullptr);
-  vkFreeMemory(device, indexBufferMemory, nullptr);
-
-  vkDestroySampler(device, textureSampler, nullptr);
-  vkDestroyImageView(device, textureImageView, nullptr);
-  vkDestroyImage(device, textureImage, nullptr);
-  vkFreeMemory(device, textureImageMemory, nullptr);
+  vkDestroySampler(device, defaultTextureSampler, nullptr);
 
   vkDestroyPipeline(device, graphicsPipeline, nullptr);
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

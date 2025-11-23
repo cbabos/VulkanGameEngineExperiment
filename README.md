@@ -18,33 +18,73 @@ Using C++ so you'll need to have a working compiler and C++ environment being se
 This project uses CMake, please install it before proceeding.  
 In order to use Vulkan you'll need to install the [SDK](https://vulkan.lunarg.com/sdk/home) first for your OS. 
 
-If your setup is working correctly you should be able to build the project. (Be aware, the following commands are for MacOS but should be easy to adapt to your OS of choice) 
-1. create a directory called `build`
-2. go to `build` directory
-3. `cmake ../`
+## Quick Start
 
-The build should be done without errors, if something wrong happens it's probably due to your Vulkan or CMake setup ("probably", I'm still a noob on this field).
-Now we'll need to compile the two shaders. 
+### Automated Build (Recommended)
 
-4. Inside `build` directory create a `shaders` sub-dir. 
-5. While staying in `build`
+The easiest way to build and run the project:
 
 ```sh
+./build.sh    # Builds the project, compiles shaders, and copies assets
+./run.sh      # Runs the application
+```
+
+### Manual Build
+
+If you prefer to build manually or the scripts don't work on your system:
+
+1. Create a build directory:
+```sh
+mkdir build
+cd build
+```
+
+2. Configure and build with CMake:
+```sh
+cmake ..
+cmake --build . -j$(nproc)  # Linux
+# or
+cmake --build . -j$(sysctl -n hw.ncpu)  # macOS
+```
+
+3. Compile shaders (requires `glslc` from Vulkan SDK):
+```sh
+mkdir shaders
 glslc ../shaders/triangle.vert -o shaders/vert.spv
 glslc ../shaders/triangle.frag -o shaders/frag.spv
 ```
 
-6. Make textures & models available 
+4. Copy assets to build directory:
 ```sh
-cp -R ../{models,textures} .
+cp -R ../models .
+cp -R ../textures .
+```
+
+5. Run the application:
+```sh
+./DarkestPlanet
 ```
 
 > **NOTE** 
-> `glslc` should come with VulkanSDK. Check your setup of the SDK if it's unavailable.
+> `glslc` comes with the Vulkan SDK. Ensure the SDK is installed and `glslc` is in your PATH. Visit [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) for installation instructions.
 
-7. Run DarkestPlanet binary. 
+## Current Status
 
-As of this moment the "engine" is in a state how the Vulkan tutorial helped me, meaning you have two shaders: a fragment shader and a vertex shader, you'll need to compile them and copy them over to the build folder.
+The engine currently implements:
+- ✅ Basic Vulkan rendering pipeline
+- ✅ 3D model loading (OBJ files via tinyobjloader)
+- ✅ Texture loading and sampling
+- ✅ Depth testing
+- ✅ Window management with GLFW
+- ✅ Driver abstraction (Vulkan implementation)
+
+**Current Limitations:**
+- Single model rendering (hardcoded model path)
+- Manual shader compilation required
+- No scene management or entity system
+- No camera system (hardcoded view/projection)
+
+See [ASSESSMENT.md](ASSESSMENT.md) for a detailed project assessment and [VOXEL_RENDERING.md](VOXEL_RENDERING.md) for voxel rendering implementation ideas.
 
 
 

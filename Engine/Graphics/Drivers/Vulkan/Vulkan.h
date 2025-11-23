@@ -5,10 +5,15 @@
 #include "../IGraphicsDriver.h"
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "Vertex.h"
+#include "Mesh.h"
+#include "Texture.h"
+#include "RenderObject.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
+#include <memory>
+#include <unordered_map>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -32,8 +37,7 @@ struct QueueFamilyIndices {
     bool isComplete();
 };
 
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+// Removed hardcoded paths - models/textures are loaded via API
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR        capabilities;
@@ -42,13 +46,29 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 };
 
 bool                      checkValidationLayerSupport();
 std::vector<const char *> getRequiredExtensions();
+
+// Internal mesh data structure for Vulkan resources
+struct VulkanMesh {
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+    uint32_t indexCount;
+};
+
+// Internal texture data structure
+struct VulkanTexture {
+    VkImage image;
+    VkDeviceMemory imageMemory;
+    VkImageView imageView;
+    VkSampler sampler;
+};
 
 class VulkanDriver : public IGraphicsDriver {
   public:
@@ -59,6 +79,14 @@ class VulkanDriver : public IGraphicsDriver {
     void Destruct() override;
     void RenderFrame() override;
     void WindowIsResized() override;
+    
+    // IGraphicsDriver API
+    std::shared_ptr<Mesh> LoadMesh(const std::string& modelPath) override;
+    std::shared_ptr<Texture> LoadTexture(const std::string& texturePath) override;
+    void SubmitRenderObject(const RenderObject& renderObject) override;
+    void ClearRenderQueue() override;
+    void SetViewMatrix(const glm::mat4& view) override;
+    void SetProjectionMatrix(const glm::mat4& projection) override;
 
   private:
     GLFWwindow *window;
@@ -79,17 +107,12 @@ class VulkanDriver : public IGraphicsDriver {
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout      pipelineLayout;
     VkCommandPool         commandPool;
-    VkBuffer              vertexBuffer;
-    VkDeviceMemory        vertexBufferMemory;
-    VkImageView           textureImageView;
-    VkSampler             textureSampler;
+    VkSampler             defaultTextureSampler;  // Shared sampler for all textures
 
     VkImage        depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView    depthImageView;
 
-    VkBuffer                     indexBuffer;
-    VkDeviceMemory               indexBufferMemory;
     VkDescriptorPool             descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -108,17 +131,28 @@ class VulkanDriver : public IGraphicsDriver {
     std::vector<VkImageView>   swapChainImageViews;
     std::vector<VkImage>       swapChainImages;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
 
     uint32_t currentFrame = 0;
-
-    VkImage        textureImage;
-    VkDeviceMemory textureImageMemory;
+    
+    // Resource management
+    std::unordered_map<std::shared_ptr<Mesh>, VulkanMesh> meshResources;
+    std::unordered_map<std::shared_ptr<Texture>, VulkanTexture> textureResources;
+    
+    // Render queue
+    std::vector<RenderObject> renderQueue;
+    
+    // Camera matrices
+    glm::mat4 viewMatrix = glm::mat4(1.0f);
+    glm::mat4 projectionMatrix = glm::mat4(1.0f);
 
     void InitVulkan();
-	void LoadModel();
     void CreateVulkanInstance();
+    
+    // Resource creation helpers
+    VulkanMesh CreateVulkanMesh(const Mesh& mesh);
+    void DestroyVulkanMesh(VulkanMesh& vulkanMesh);
+    VulkanTexture CreateVulkanTexture(const std::string& texturePath);
+    void DestroyVulkanTexture(VulkanTexture& vulkanTexture);
     void CreateVulkanSurface();
     void PickPhysicalDevice();
     void CreateLogicalDevice();
@@ -128,15 +162,11 @@ class VulkanDriver : public IGraphicsDriver {
     void CreateImageViews();
     void CreateDescriptorSetLayout();
     void CreateGraphicsPipeline();
-    void CreateVertexBuffer();
     void CreateUniformBuffers();
-    void CreateIndexBuffer();
     void CreateDescriptorPool();
     void CreateDescriptorSets();
-    void CreateTextureImage();
     void CreateDepthResources();
-    void CreateTextureImageView();
-    void CreateTextureSampler();
+    void CreateDefaultTextureSampler();
     void DestroyVulkan();
     void PopulateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT &createInfo);

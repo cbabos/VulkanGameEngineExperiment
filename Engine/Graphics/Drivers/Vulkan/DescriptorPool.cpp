@@ -43,10 +43,12 @@ void VulkanDriver::CreateDescriptorSets() {
     bufferInfo.offset = 0;
     bufferInfo.range  = sizeof(UniformBufferObject);
 
+    // Initialize texture binding with default sampler
+    // The actual texture will be updated per-object in the command buffer
     VkDescriptorImageInfo imageInfo{};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView   = textureImageView;
-    imageInfo.sampler     = textureSampler;
+    imageInfo.imageView   = VK_NULL_HANDLE;  // Will be updated per-object
+    imageInfo.sampler     = defaultTextureSampler;
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
     descriptorWrites[0].sType      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

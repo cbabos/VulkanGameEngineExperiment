@@ -1,3 +1,6 @@
+#ifndef VERTEX_H
+#define VERTEX_H
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
@@ -49,3 +52,5 @@ const std::vector<uint16_t> experimentalIndices = {
 	4, 5, 6, 6, 7, 4,
 	8, 9, 10, 10, 11, 8
 };
+
+#endif // VERTEX_H

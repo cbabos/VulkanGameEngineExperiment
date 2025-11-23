@@ -3,50 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
-void VulkanDriver::CreateTextureImage() {
-  int          texWidth, texHeight, texChannels;
-  stbi_uc     *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight,
-                                  &texChannels, STBI_rgb_alpha);
-  VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-  if (!pixels) { throw std::runtime_error("failed to load texture"); }
-
-  VkBuffer       stagingBuffer;
-  VkDeviceMemory stagingBufferMemory;
-
-  CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-               stagingBuffer, stagingBufferMemory);
-
-  void *data;
-  vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-  memcpy(data, pixels, static_cast<size_t>(imageSize));
-  vkUnmapMemory(device, stagingBufferMemory);
-  stbi_image_free(pixels);
-
-  CreateImage(
-    texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_UNDEFINED,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  CopyBufferToImage(stagingBuffer, textureImage,
-                    static_cast<uint32_t>(texWidth),
-                    static_cast<uint32_t>(texHeight));
-
-  TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  vkDestroyBuffer(device, stagingBuffer, nullptr);
-  vkFreeMemory(device, stagingBufferMemory, nullptr);
-}
+// Helper functions for texture creation (used by ResourceManager.cpp)
 
 void VulkanDriver::CreateImage(uint32_t width, uint32_t height, VkFormat format,
                                VkImageTiling tiling, VkImageUsageFlags usage,
@@ -174,12 +132,7 @@ void VulkanDriver::CopyBufferToImage(VkBuffer buffer, VkImage image,
   EndSingleTimeCommands(commandBuffer);
 }
 
-void VulkanDriver::CreateTextureImageView() {
-  textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-                                     VK_IMAGE_ASPECT_COLOR_BIT);
-}
-
-void VulkanDriver::CreateTextureSampler() {
+void VulkanDriver::CreateDefaultTextureSampler() {
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
@@ -201,7 +154,7 @@ void VulkanDriver::CreateTextureSampler() {
   samplerInfo.minLod                  = 0.0f;
   samplerInfo.maxLod                  = 0.0f;
 
-  if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) !=
+  if (vkCreateSampler(device, &samplerInfo, nullptr, &defaultTextureSampler) !=
       VK_SUCCESS) {
     throw std::runtime_error("Failed to create texture sampler");
   }
