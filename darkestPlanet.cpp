@@ -24,7 +24,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> GenerateCubeMesh(float siz
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     
-    float s = size;
+    float s = size * 0.5f; // around origin we need to halve for the right size
     
     // Define the 8 vertices of a cube
     std::vector<glm::vec3> positions = {
@@ -77,55 +77,51 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> GenerateCubeMesh(float siz
     return {vertices, indices};
 }
 
-// Generate a rainbow texture programmatically
-std::vector<uint8_t> GenerateRainbowTexture(uint32_t width, uint32_t height) {
+// Generate a grass-like pixelated texture programmatically
+std::vector<uint8_t> GenerateGrassTexture(uint32_t width, uint32_t height) {
     std::vector<uint8_t> pixels(width * height * 4);  // RGBA
-    
+
+    // Main grass color
+    const uint8_t base_r = 55;
+    const uint8_t base_g = 170;
+    const uint8_t base_b = 47;
+
+    // For a "pixelated" look, create chunky blocks of grass blades and dirt
+    uint32_t blockSize = std::max(2u, width / 16); // controls "pixels" size for pixelated effect
+
     for (uint32_t y = 0; y < height; y++) {
         for (uint32_t x = 0; x < width; x++) {
             uint32_t index = (y * width + x) * 4;
-            
-            // Create a rainbow pattern based on position
-            float fx = static_cast<float>(x) / width;
+
+            // Calculate block coordinates
+            uint32_t bx = x / blockSize;
+            uint32_t by = y / blockSize;
+
+            // Add variation in green tones for the grass "pixels"
+            uint8_t r = base_r + static_cast<uint8_t>((bx * by + x + y) % 13);
+            uint8_t g = base_g + static_cast<uint8_t>((bx * 5 + by * 13 + x) % 30); // stronger green
+            uint8_t b = base_b + static_cast<uint8_t>((bx * 7 + by * 3 + y) % 14);
+
+            // Optionally: simulate some dirt at the bottom (brownish, last ~15% rows)
             float fy = static_cast<float>(y) / height;
-            
-            // Create rainbow colors using HSV to RGB conversion
-            float hue = fx * 360.0f;  // Hue varies from 0 to 360
-            float saturation = 1.0f;
-            float value = 0.5f + 0.5f * std::sin(fy * 3.14159f * 2.0f);  // Vary brightness
-            
-            // HSV to RGB conversion
-            float c = value * saturation;
-            float x_h = c * (1.0f - std::abs(std::fmod(hue / 60.0f, 2.0f) - 1.0f));
-            float m = value - c;
-            
-            float r, g, b;
-            if (hue < 60) {
-                r = c; g = x_h; b = 0;
-            } else if (hue < 120) {
-                r = x_h; g = c; b = 0;
-            } else if (hue < 180) {
-                r = 0; g = c; b = x_h;
-            } else if (hue < 240) {
-                r = 0; g = x_h; b = c;
-            } else if (hue < 300) {
-                r = x_h; g = 0; b = c;
-            } else {
-                r = c; g = 0; b = x_h;
+            if (fy > 0.85f) {
+                // Brown dirt
+                r = 111 + static_cast<uint8_t>((bx * 19 + x) % 14);
+                g = 79 + static_cast<uint8_t>((by * 11 + y) % 8);
+                b = 44 + static_cast<uint8_t>((bx * 13 + y) % 8);
             }
-            
-            pixels[index + 0] = static_cast<uint8_t>((r + m) * 255.0f);  // R
-            pixels[index + 1] = static_cast<uint8_t>((g + m) * 255.0f);  // G
-            pixels[index + 2] = static_cast<uint8_t>((b + m) * 255.0f);  // B
-            pixels[index + 3] = 255;  // A
+
+            pixels[index + 0] = r;
+            pixels[index + 1] = g;
+            pixels[index + 2] = b;
+            pixels[index + 3] = 255; // Alpha
         }
     }
-    
+
     return pixels;
 }
 
 void GameLoop(GraphicsManager* gManager, IGraphicsDriver* driver, 
-              std::shared_ptr<Mesh> loadedMesh, std::shared_ptr<Texture> loadedTexture,
               std::shared_ptr<Mesh> cubeMesh, std::shared_ptr<Texture> rainbowTexture) {
 	// Check Input
 	// Update entities
@@ -142,12 +138,15 @@ void GameLoop(GraphicsManager* gManager, IGraphicsDriver* driver,
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 		
-		// Update camera matrices (example: rotating camera)
-		glm::mat4 view = glm::lookAt(
-			glm::vec3(3.0f * cos(time * 0.3f), 3.0f * sin(time * 0.3f), 2.5f),
-			glm::vec3(0.0f, 0.0f, 0.0f),
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		);
+
+		glm::vec3 cameraPos = glm::vec3(3.0f, 3.0f, 2.5f);
+		glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+		glm::vec3 cameraDirection = glm::normalize(cameraTarget - cameraPos);
+		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::vec3 cameraRight = glm::normalize(glm::cross(cameraDirection, up));	
+		glm::vec3 cameraUp = glm::normalize(glm::cross(cameraDirection, cameraRight));
+		
+		glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
 		driver->SetViewMatrix(view);
 		
 		// Set projection matrix
@@ -156,36 +155,12 @@ void GameLoop(GraphicsManager* gManager, IGraphicsDriver* driver,
 		glm::mat4 proj = glm::perspective(glm::radians(45.0f), width / (float)height, 0.1f, 20.0f);
 		driver->SetProjectionMatrix(proj);
 		
-		// Submit multiple render objects
-		
-		// 1. Original loaded mesh at center, rotating on Z axis
-		glm::mat4 modelMatrix1 = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		RenderObject obj1(loadedMesh, loadedTexture, modelMatrix1);
-		driver->SubmitRenderObject(obj1);
-		
-		// 2. Cube on the left, rotating on Y axis
-		glm::mat4 modelMatrix2 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f));
-		modelMatrix2 = glm::rotate(modelMatrix2, time * glm::radians(120.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		// 1. Cube on the left, rotating on Y axis
+		glm::mat4 modelMatrix2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+		modelMatrix2 = glm::rotate(modelMatrix2, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		RenderObject obj2(cubeMesh, rainbowTexture, modelMatrix2);
 		driver->SubmitRenderObject(obj2);
 		
-		// 3. Cube on the right, rotating on X axis
-		glm::mat4 modelMatrix3 = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f));
-		modelMatrix3 = glm::rotate(modelMatrix3, time * glm::radians(150.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		RenderObject obj3(cubeMesh, rainbowTexture, modelMatrix3);
-		driver->SubmitRenderObject(obj3);
-		
-		// 4. Cube above, rotating on all axes
-		glm::mat4 modelMatrix4 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.5f));
-		modelMatrix4 = glm::rotate(modelMatrix4, time * glm::radians(100.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		RenderObject obj4(cubeMesh, rainbowTexture, modelMatrix4);
-		driver->SubmitRenderObject(obj4);
-		
-		// 5. Cube below, rotating on Z and Y axes
-		glm::mat4 modelMatrix5 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.5f));
-		modelMatrix5 = glm::rotate(modelMatrix5, time * glm::radians(80.0f), glm::vec3(0.0f, 1.0f, 1.0f));
-		RenderObject obj5(cubeMesh, rainbowTexture, modelMatrix5);
-		driver->SubmitRenderObject(obj5);
 		
 		gManager->update();
 	}
@@ -202,34 +177,33 @@ int main() {
 	glfwSetKeyCallback(gManager.getWindow(), HandleKey);
 	
 	// Load resources using the new API
-	std::shared_ptr<Mesh> loadedMesh;
-	std::shared_ptr<Texture> loadedTexture;
+	// std::shared_ptr<Mesh> loadedMesh;
+	// std::shared_ptr<Texture> loadedTexture;
 	
-	try {
-		loadedMesh = vulkanDriver.LoadMesh("models/viking_room.obj");
-		loadedTexture = vulkanDriver.LoadTexture("textures/viking_room.png");
-	} catch (const std::exception& e) {
-		std::cerr << "Failed to load resources: " << e.what() << std::endl;
-		return -1;
-	}
+	// Kept for later reference
+	// try {
+	// 	loadedMesh = vulkanDriver.LoadMesh("models/viking_room.obj");
+	// 	loadedTexture = vulkanDriver.LoadTexture("textures/viking_room.png");
+	// } catch (const std::exception& e) {
+	// 	std::cerr << "Failed to load resources: " << e.what() << std::endl;
+	// 	return -1;
+	// }
 	
 	// Create programmatic resources
 	std::cout << "\nCreating programmatic cube mesh..." << std::endl;
 	auto [cubeVertices, cubeIndices] = GenerateCubeMesh(0.3f);
 	std::shared_ptr<Mesh> cubeMesh = vulkanDriver.CreateMesh(cubeVertices, cubeIndices);
 	
-	std::cout << "Creating programmatic rainbow texture..." << std::endl;
+	std::cout << "Creating programmatic grass texture..." << std::endl;
 	const uint32_t textureSize = 256;
-	auto rainbowPixels = GenerateRainbowTexture(textureSize, textureSize);
-	std::shared_ptr<Texture> rainbowTexture = vulkanDriver.CreateTexture(
-		textureSize, textureSize, rainbowPixels.data());
+	auto grassPixels = GenerateGrassTexture(textureSize, textureSize);
+	std::shared_ptr<Texture> grassTexture = vulkanDriver.CreateTexture(
+		textureSize, textureSize, grassPixels.data());
 	
-	std::cout << "\nRendering " << 5 << " objects:" << std::endl;
-	std::cout << "  - 1 loaded mesh (viking room) at center" << std::endl;
-	std::cout << "  - 4 programmatic cubes with rainbow textures" << std::endl;
+	std::cout << "Rendering the game..." << std::endl;
 	std::cout << "\nPress ESC to exit\n" << std::endl;
 	
-	GameLoop(&gManager, &vulkanDriver, loadedMesh, loadedTexture, cubeMesh, rainbowTexture);
+	GameLoop(&gManager, &vulkanDriver, cubeMesh, grassTexture);
 
 	gManager.destroyWindow();
 	return 0;
