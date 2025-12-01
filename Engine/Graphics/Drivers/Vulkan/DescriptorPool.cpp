@@ -7,14 +7,15 @@ void VulkanDriver::CreateDescriptorPool() {
   std::array<VkDescriptorPoolSize, 2> poolSizes;
   poolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  // Allow for many textures (each texture needs MAX_FRAMES_IN_FLIGHT descriptor sets)
   poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 100);  // Support up to 100 textures
 
   VkDescriptorPoolCreateInfo poolInfo{};
   poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes    = poolSizes.data();
-  poolInfo.maxSets       = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+  poolInfo.maxSets       = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * 101);  // UBO sets + texture sets
 
   if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) !=
       VK_SUCCESS) {
@@ -43,11 +44,11 @@ void VulkanDriver::CreateDescriptorSets() {
     bufferInfo.offset = 0;
     bufferInfo.range  = sizeof(UniformBufferObject);
 
-    // Initialize texture binding with default sampler
+    // Initialize texture binding with default white texture
     // The actual texture will be updated per-object in the command buffer
     VkDescriptorImageInfo imageInfo{};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView   = VK_NULL_HANDLE;  // Will be updated per-object
+    imageInfo.imageView   = defaultTextureImageView;
     imageInfo.sampler     = defaultTextureSampler;
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites{};

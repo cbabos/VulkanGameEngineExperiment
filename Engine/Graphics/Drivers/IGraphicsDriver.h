@@ -6,10 +6,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Forward declarations
 class Mesh;
 class Texture;
+struct Vertex;
 struct RenderObject;
 
 class IGraphicsDriver {
@@ -24,6 +26,10 @@ public:
 	// Resource loading API
 	virtual std::shared_ptr<Mesh> LoadMesh(const std::string& modelPath) = 0;
 	virtual std::shared_ptr<Texture> LoadTexture(const std::string& texturePath) = 0;
+	
+	// Programmatic resource creation API
+	virtual std::shared_ptr<Mesh> CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) = 0;
+	virtual std::shared_ptr<Texture> CreateTexture(uint32_t width, uint32_t height, const void* pixelData) = 0;
 	
 	// Render queue API
 	virtual void SubmitRenderObject(const RenderObject& renderObject) = 0;

@@ -64,15 +64,177 @@ std::shared_ptr<Texture> VulkanDriver::LoadTexture(const std::string& texturePat
     auto texture = std::make_shared<Texture>();
     
     // Create Vulkan resources for this texture
-    textureResources[texture] = CreateVulkanTexture(texturePath);
+    VulkanTexture vulkanTexture = CreateVulkanTexture(texturePath);
+    textureResources[texture] = vulkanTexture;
+    
+    // Create descriptor sets for this texture
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+    
+    std::vector<VkDescriptorSet> textureSets(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, textureSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate texture descriptor sets!");
+    }
+    
+    // Update descriptor sets with texture info
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+        
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = vulkanTexture.imageView;
+        imageInfo.sampler = defaultTextureSampler;
+        
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = textureSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = textureSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
+        
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
+                              descriptorWrites.data(), 0, nullptr);
+    }
+    
+    textureDescriptorSets[texture] = textureSets;
     
     // Update texture object with Vulkan handles
-    texture->image = textureResources[texture].image;
-    texture->imageMemory = textureResources[texture].imageMemory;
-    texture->imageView = textureResources[texture].imageView;
+    texture->image = vulkanTexture.image;
+    texture->imageMemory = vulkanTexture.imageMemory;
+    texture->imageView = vulkanTexture.imageView;
     texture->sampler = defaultTextureSampler;  // Use shared sampler
     
     std::cout << "Loaded texture from " << texturePath << std::endl;
+    
+    return texture;
+}
+
+std::shared_ptr<Mesh> VulkanDriver::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) {
+    auto mesh = std::make_shared<Mesh>(vertices, indices);
+    
+    // Create Vulkan resources for this mesh
+    meshResources[mesh] = CreateVulkanMesh(*mesh);
+    
+    std::cout << "Created mesh programmatically: " << vertices.size() 
+              << " vertices, " << indices.size() << " indices" << std::endl;
+    
+    return mesh;
+}
+
+std::shared_ptr<Texture> VulkanDriver::CreateTexture(uint32_t width, uint32_t height, const void* pixelData) {
+    auto texture = std::make_shared<Texture>();
+    
+    // Create Vulkan texture from pixel data
+    VkDeviceSize imageSize = width * height * 4; // RGBA
+    
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
+    
+    void *data;
+    vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixelData, static_cast<size_t>(imageSize));
+    vkUnmapMemory(device, stagingBufferMemory);
+    
+    VulkanTexture vulkanTexture{};
+    CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                vulkanTexture.image, vulkanTexture.imageMemory);
+    
+    TransitionImageLayout(vulkanTexture.image, VK_FORMAT_R8G8B8A8_SRGB,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyBufferToImage(stagingBuffer, vulkanTexture.image, width, height);
+    
+    TransitionImageLayout(vulkanTexture.image, VK_FORMAT_R8G8B8A8_SRGB,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+    
+    vulkanTexture.imageView = CreateImageView(vulkanTexture.image, VK_FORMAT_R8G8B8A8_SRGB,
+                                               VK_IMAGE_ASPECT_COLOR_BIT);
+    vulkanTexture.sampler = defaultTextureSampler;
+    
+    textureResources[texture] = vulkanTexture;
+    
+    // Create descriptor sets for this texture
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+    
+    std::vector<VkDescriptorSet> textureSets(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, textureSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate texture descriptor sets!");
+    }
+    
+    // Update descriptor sets with texture info
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+        
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = vulkanTexture.imageView;
+        imageInfo.sampler = defaultTextureSampler;
+        
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = textureSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = textureSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
+        
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
+                              descriptorWrites.data(), 0, nullptr);
+    }
+    
+    textureDescriptorSets[texture] = textureSets;
+    
+    // Update texture object with Vulkan handles
+    texture->image = vulkanTexture.image;
+    texture->imageMemory = vulkanTexture.imageMemory;
+    texture->imageView = vulkanTexture.imageView;
+    texture->sampler = defaultTextureSampler;
+    
+    std::cout << "Created texture programmatically: " << width << "x" << height << std::endl;
     
     return texture;
 }

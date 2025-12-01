@@ -79,26 +79,16 @@ void VulkanDriver::RecordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 
                        0, sizeof(glm::mat4), &renderObject.modelMatrix);
     
-    // Bind texture descriptor set (we'll need to create per-texture descriptor sets)
-    // For now, we'll use the same descriptor set but update the texture
-    // TODO: Implement proper per-texture descriptor sets for better performance
-    VkDescriptorImageInfo imageInfo{};
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = vulkanTexture.imageView;
-    imageInfo.sampler = defaultTextureSampler;
-    
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descriptorSets[currentFrame];
-    descriptorWrite.dstBinding = 1;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pImageInfo = &imageInfo;
-    
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                           pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    // Bind per-texture descriptor set
+    auto it = textureDescriptorSets.find(renderObject.texture);
+    if (it != textureDescriptorSets.end()) {
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                               pipelineLayout, 0, 1, &it->second[currentFrame], 0, nullptr);
+    } else {
+        // Fallback to default descriptor set if texture doesn't have one
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                               pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    }
     
     // Draw
     vkCmdDrawIndexed(commandBuffer, vulkanMesh.indexCount, 1, 0, 0, 0);

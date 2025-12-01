@@ -83,6 +83,8 @@ class VulkanDriver : public IGraphicsDriver {
     // IGraphicsDriver API
     std::shared_ptr<Mesh> LoadMesh(const std::string& modelPath) override;
     std::shared_ptr<Texture> LoadTexture(const std::string& texturePath) override;
+    std::shared_ptr<Mesh> CreateMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) override;
+    std::shared_ptr<Texture> CreateTexture(uint32_t width, uint32_t height, const void* pixelData) override;
     void SubmitRenderObject(const RenderObject& renderObject) override;
     void ClearRenderQueue() override;
     void SetViewMatrix(const glm::mat4& view) override;
@@ -108,6 +110,11 @@ class VulkanDriver : public IGraphicsDriver {
     VkPipelineLayout      pipelineLayout;
     VkCommandPool         commandPool;
     VkSampler             defaultTextureSampler;  // Shared sampler for all textures
+    
+    // Default white texture for descriptor set initialization
+    VkImage        defaultTextureImage;
+    VkDeviceMemory defaultTextureImageMemory;
+    VkImageView    defaultTextureImageView;
 
     VkImage        depthImage;
     VkDeviceMemory depthImageMemory;
@@ -137,6 +144,7 @@ class VulkanDriver : public IGraphicsDriver {
     // Resource management
     std::unordered_map<std::shared_ptr<Mesh>, VulkanMesh> meshResources;
     std::unordered_map<std::shared_ptr<Texture>, VulkanTexture> textureResources;
+    std::unordered_map<std::shared_ptr<Texture>, std::vector<VkDescriptorSet>> textureDescriptorSets;  // Per-texture descriptor sets
     
     // Render queue
     std::vector<RenderObject> renderQueue;
@@ -167,6 +175,7 @@ class VulkanDriver : public IGraphicsDriver {
     void CreateDescriptorSets();
     void CreateDepthResources();
     void CreateDefaultTextureSampler();
+    void CreateDefaultTexture();
     void DestroyVulkan();
     void PopulateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT &createInfo);

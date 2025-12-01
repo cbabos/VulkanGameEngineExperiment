@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+
+The following rules are always applicable for every change related to /Engine
+
+# Engine 
+The folder /Engine is supposed to be the game engine in the future (no name for it yet). 
+It's purpose is to provide API for multiple jobs: 
+- rendering graphics (should receive mesh and texture information from the game via API)
+- collision detection 
+- sfx/music handling
+
+# Development
+After every change run ./build.sh to verify the application builds without error. If there's a compilation error, we should fix it before reporting finish. 
+With every change keep in mind and in focus that this is an engine in the first place so it should support eg. multiple meshes to be rendered, multiple textures etc. 
